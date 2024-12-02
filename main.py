@@ -1,6 +1,7 @@
 from backtest_engine import BacktestEngine
 from strategies.vwap_strategy import VWAPStrategy
 from strategies.ma_strategy import MAStrategy
+from strategies.grid_strategy import GridStrategy
 
 def run_strategy_backtest(strategy, symbol, start_date, end_date):
     engine = BacktestEngine(initial_capital=1000000, commission_rate=0.00005)
@@ -33,5 +34,14 @@ if __name__ == "__main__":
         ma_strategy, 
         symbol, 
         start_date, 
+        end_date
+    )
+    
+    # 测试网格策略
+    grid_strategy = GridStrategy(grid_num=10, price_range_ratio=0.02)
+    grid_results = run_strategy_backtest(
+        grid_strategy,
+        symbol,
+        start_date,
         end_date
     ) 

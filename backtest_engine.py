@@ -99,7 +99,7 @@ class BacktestEngine:
         
         return df
     
-    def run_backtest(self, strategy, symbol, start_date, end_date):
+    def run_backtest(self, strategy, symbol, start_date, end_date, show_plots=True):
         """
         运行回测
         
@@ -113,6 +113,8 @@ class BacktestEngine:
             开始日期 'YYYYMMDD'
         end_date: str
             结束日期 'YYYYMMDD'
+        show_plots: bool
+            是否显示图表
         """
         # 判断是否是品种代码（主力合约）
         is_dominant = len(symbol) <= 2 or symbol.isalpha()
@@ -161,7 +163,11 @@ class BacktestEngine:
             )
             visualizer.plot_trades_and_indicators()
             visualizer.plot_pnl_curve()
-            plt.show()
+            
+            if show_plots:
+                plt.show()
+            else:
+                plt.close('all')
             
         return results
     
