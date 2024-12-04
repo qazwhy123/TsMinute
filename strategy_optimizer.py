@@ -4,6 +4,7 @@ from backtest_engine import BacktestEngine
 from strategies.vwap_strategy import VWAPStrategy
 from strategies.ma_strategy import MAStrategy
 from strategies.grid_strategy import GridStrategy
+from strategies.daily_return_strategy import DailyReturnStrategy
 from itertools import product
 import time
 from tabulate import tabulate
@@ -40,6 +41,14 @@ class StrategyOptimizer:
                 'default_params': {
                     'grid_nums': [5, 8, 10, 12, 15, 20],
                     'price_range_ratios': [0.005, 0.01, 0.015, 0.02, 0.025, 0.03]
+                }
+            },
+            'DailyReturn': {
+                'class': DailyReturnStrategy,
+                'optimizer': self._optimize_daily_return_strategy,
+                'default_params': {
+                    'return_thresholds': [0.01, 0.015, 0.02, 0.025, 0.03],
+                    'entry_times': ['14:45:00', '14:50:00', '14:55:00']
                 }
             }
         }
@@ -131,6 +140,26 @@ class StrategyOptimizer:
             strategy_params = {'grid_num': grid_num, 'price_range_ratio': ratio}
             strategy = GridStrategy(grid_num=grid_num, price_range_ratio=ratio)
             strategy.name = f"Grid({grid_num},{ratio:.3f})"
+            self.run_single_test(strategy, strategy_params)
+            
+    def _optimize_daily_return_strategy(self):
+        """日内涨跌幅策略优化"""
+        params = self.strategy_configs['DailyReturn']['params']
+        thresholds = params['return_thresholds']
+        entry_times = params['entry_times']
+        
+        print(f"日内涨跌幅策略参数组合数: {len(thresholds) * len(entry_times)}")
+        
+        for threshold, entry_time in product(thresholds, entry_times):
+            strategy_params = {
+                'return_threshold': threshold,
+                'entry_time': entry_time
+            }
+            strategy = DailyReturnStrategy(
+                return_threshold=threshold,
+                entry_time=entry_time
+            )
+            strategy.name = f"DailyReturn({threshold:.1%},{entry_time})"
             self.run_single_test(strategy, strategy_params)
             
     def run_all_tests(self):
@@ -259,8 +288,8 @@ if __name__ == "__main__":
     
     # 配置策略
     optimizer.set_strategy_config('Grid', enabled=True, params={
-        'grid_nums': [3, 5, 8, 10],
-        'price_range_ratios': [0.002, 0.003,0.005, 0.01, 0.015, 0.02, 0.025, 0.03]
+        'grid_nums': [3, 5, 8],
+        'price_range_ratios': [0.005, 0.01, 0.015, 0.02, 0.025, 0.03, 0.05]
     })
     optimizer.set_strategy_config('MA', enabled=False)
     optimizer.set_strategy_config('VWAP', enabled=False)

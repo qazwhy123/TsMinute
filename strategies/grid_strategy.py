@@ -4,28 +4,21 @@ import numpy as np
 
 class GridStrategy(BaseStrategy):
     def __init__(self, grid_num=10, price_range_ratio=0.02):
-        """
-        网格交易策略
-        
-        Parameters:
-        -----------
-        grid_num: int
-            网格数量
-        price_range_ratio: float
-            价格区间比例（相对于初始价格的上下浮动比例）
-        """
         super().__init__()
         self.name = "Grid Strategy"
         self.grid_num = grid_num
         self.price_range_ratio = price_range_ratio
         self.grids = None
-        self.init_price = None
+        self.base_price = None  # 基准价格（每日开盘价）
         self.grid_positions = {}  # 记录每个网格的持仓状态
         self.grid_history = []    # 记录网格线历史数据
+        self.current_date = None
+        self.last_price = None
+        self.target_position = 0.5  # 目标仓位比例
         
     def initialize_grids(self, price):
         """初始化网格"""
-        self.init_price = price
+        self.base_price = price
         price_range = price * self.price_range_ratio
         
         # 计算网格价格
@@ -47,7 +40,7 @@ class GridStrategy(BaseStrategy):
         
     def get_grid_signals(self, price):
         """获取网格交易信号"""
-        if self.grids is None:
+        if self.grids is None or self.last_price is None:
             return []
             
         signals = []
@@ -77,32 +70,54 @@ class GridStrategy(BaseStrategy):
                 
         return signals
         
+    def adjust_to_target_position(self, price):
+        """调整到目标仓位"""
+        signals = []
+        if self.current_position == 0:
+            return signals
+            
+        # 计算目标仓位数量
+        target_volume = self.calculate_position_volume(price) * self.target_position
+        current_volume = abs(self.current_position) * self.calculate_position_volume(price)
+        
+        # 如果当前持仓方向与数量都正确，不需要调整
+        if self.current_position > 0 and abs(current_volume - target_volume) < 0.0001:
+            return signals
+            
+        # 先平掉当前仓位
+        if self.current_position != 0:
+            signals.append({
+                'direction': -self.current_position,
+                'volume': current_volume,
+                'price': price,
+                'type': 'position_adjust'
+            })
+            
+        # 建立目标仓位（始终做多）
+        signals.append({
+            'direction': 1,
+            'volume': target_volume,
+            'price': price,
+            'type': 'position_adjust'
+        })
+        
+        return signals
+        
     def on_bar(self, timestamp, bar):
         signals = []
+        current_date = pd.Timestamp(timestamp).date()
         price = bar['close']
         
-        # 初始化网格
-        if self.init_price is None:
-            self.initialize_grids(price)
-            self.last_price = price
-            return signals
+        # 新的交易日
+        if self.current_date != current_date:
+            self.current_date = current_date
+            # 使用开盘价初始化网格
+            self.initialize_grids(bar['open'])
+            self.last_price = bar['open']
             
-        # 收盘前平仓
+        # 收盘前调整仓位
         if self.should_close_position(timestamp):
-            # 平掉所有网格持仓
-            for grid_price, position in self.grid_positions.items():
-                if position != 0:
-                    signals.append({
-                        'direction': -position,
-                        'volume': self.calculate_position_volume(price),
-                        'price': price
-                    })
-                    self.grid_positions[grid_price] = 0
-            return signals
-            
-        # 检查是否需要重新初始化网格
-        if abs(price - self.init_price) / self.init_price > self.price_range_ratio:
-            self.initialize_grids(price)
+            return self.adjust_to_target_position(price)
             
         # 获取网格交易信号
         if self.check_trading_time(timestamp):

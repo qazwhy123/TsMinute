@@ -7,7 +7,7 @@ from visualizer import BacktestVisualizer
 import matplotlib.pyplot as plt
 
 class BacktestEngine:
-    def __init__(self, initial_capital=1000000, commission_rate=0.0003):
+    def __init__(self, initial_capital=1000000, commission_rate=0.00005):
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
         self.positions = {}  # 当前持仓 {symbol: position}

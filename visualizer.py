@@ -172,19 +172,41 @@ class BacktestVisualizer:
         
         return trading_data
     
-    def plot_pnl_curve(self, figsize=(15, 8)):
-        """绘制净值曲线"""
-        fig, ax = plt.subplots(figsize=figsize)
+    def plot_pnl_curve(self, figsize=(15, 12)):
+        """绘制净值曲线和仓位变化"""
+        # 创建两个子图
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize, height_ratios=[2, 1], sharex=True)
         
         # 确保时间戳格式正确并只保留交易时段数据
         trading_data = self._get_trading_data(self.pnl_df)
         
-        # 绘制净值曲线
-        ax.plot(range(len(trading_data)), trading_data['net_value'], 
+        # 绘制净值曲线（上图）
+        ax1.plot(range(len(trading_data)), trading_data['net_value'], 
                 label='Strategy Net Value', color='blue')
         
         # 添加基准线
-        ax.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Benchmark')
+        ax1.axhline(y=1, color='gray', linestyle='--', alpha=0.5, label='Benchmark')
+        
+        # 设置上图标题和标签
+        ax1.set_title('Strategy Net Value Curve')
+        ax1.set_ylabel('Net Value')
+        ax1.grid(True)
+        ax1.legend()
+        
+        # 绘制仓位变化（下图）
+        ax2.plot(range(len(trading_data)), trading_data['position'], 
+                label='Position', color='orange', alpha=0.8)
+        ax2.fill_between(range(len(trading_data)), trading_data['position'], 
+                         0, alpha=0.2, color='orange')
+        
+        # 添加零线
+        ax2.axhline(y=0, color='gray', linestyle='-', alpha=0.3)
+        
+        # 设置下图标题和标签
+        ax2.set_title('Position')
+        ax2.set_xlabel('Time')
+        ax2.set_ylabel('Position Size')
+        ax2.grid(True)
         
         # 设置x轴刻度和标签
         num_points = len(trading_data)
@@ -192,13 +214,9 @@ class BacktestVisualizer:
         xticks_pos = range(0, num_points, step)
         xticks_labels = trading_data.index[::step]
         
-        ax.set_xticks(xticks_pos)
-        ax.set_xticklabels([x.strftime('%Y-%m-%d %H:%M') for x in xticks_labels], rotation=45)
+        ax2.set_xticks(xticks_pos)
+        ax2.set_xticklabels([x.strftime('%Y-%m-%d %H:%M') for x in xticks_labels], rotation=45)
         
-        ax.set_title('Strategy Net Value Curve')
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Net Value')
-        ax.grid(True)
-        ax.legend()
+        # 调整子图间距
         plt.tight_layout()
         return fig
